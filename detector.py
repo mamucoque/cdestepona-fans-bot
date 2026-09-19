@@ -1,10 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
-URL = "https://www.cdesteponafans.com/"
+WEB = "https://www.cdesteponafans.com/"
 
 response = requests.get(
-    URL,
+    WEB,
     headers={
         "User-Agent": "Mozilla/5.0"
     },
@@ -15,12 +16,37 @@ response.raise_for_status()
 
 soup = BeautifulSoup(response.text, "html.parser")
 
-print("Página cargada correctamente.")
+noticias = []
 
-# Mostrar los enlaces encontrados
 for enlace in soup.find_all("a", href=True):
-    texto = enlace.get_text(" ", strip=True)
-    url = enlace["href"]
+    href = enlace["href"]
 
-    if texto:
-        print(f"{texto} -> {url}")
+    # Solo queremos enlaces de noticias
+    if "/es/noticias/" not in href:
+        continue
+
+    titulo = enlace.get_text(" ", strip=True)
+
+    if not titulo:
+        continue
+
+    url = urljoin(WEB, href)
+
+    noticia = {
+        "titulo": titulo,
+        "url": url
+    }
+
+    # Evitar duplicados
+    if noticia not in noticias:
+        noticias.append(noticia)
+
+
+print(f"Se han encontrado {len(noticias)} noticias.")
+
+print("\n--- NOTICIAS DETECTADAS ---\n")
+
+for numero, noticia in enumerate(noticias, start=1):
+    print(f"{numero}. {noticia['titulo']}")
+    print(f"   {noticia['url']}")
+    print()
