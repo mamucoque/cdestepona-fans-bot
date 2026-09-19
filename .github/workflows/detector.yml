@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "*/5 * * * *"
 
+permissions:
+  contents: write
+
 jobs:
   detectar:
     runs-on: ubuntu-latest
@@ -24,3 +27,17 @@ jobs:
 
       - name: Ejecutar detector
         run: python detector.py
+
+      - name: Guardar memoria
+        run: |
+          git config user.name "CD Estepona Fans Bot"
+          git config user.email "bot@cdesteponafans.com"
+
+          git add ultima_noticia.txt
+
+          if git diff --cached --quiet; then
+            echo "No hay cambios en la memoria."
+          else
+            git commit -m "Actualizar memoria del detector"
+            git push
+          fi
