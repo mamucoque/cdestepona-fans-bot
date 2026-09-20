@@ -23,8 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar dependencias
-        run: |
-          pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4
 
       - name: Detectar noticias nuevas
         run: python detector.py
@@ -52,13 +51,6 @@ jobs:
         run: |
           git config user.name "CD Estepona Fans Bot"
           git config user.email "bot@cdesteponafans.com"
-
           git add noticias_procesadas.txt
-
-          if git diff --cached --quiet; then
-            echo "No hay cambios en la memoria."
-          else
-            git commit -m "Actualizar noticias procesadas"
-            git push
-          fi
-```
+          git diff --cached --quiet || git commit -m "Actualizar noticias procesadas"
+          git push
