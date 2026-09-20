@@ -1,10 +1,14 @@
+```python
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from pathlib import Path
+import json
 
-WEB = "https://www.cdesteponafans.com/"
-ARCHIVO_MEMORIA = Path("ultima_noticia.txt")
+
+ARCHIVO_NUEVAS = Path("noticias_nuevas.json")
+ARCHIVO_MEMORIA = Path("noticias_procesadas.txt")
+ARCHIVO_PUBLICACION = Path("PUBLICAR_EN_WHATSAPP.txt")
 
 
 def obtener_soup(url):
@@ -21,48 +25,31 @@ def obtener_soup(url):
     return BeautifulSoup(response.text, "html.parser")
 
 
-def obtener_noticias():
-    soup = obtener_soup(WEB)
-
-    noticias = []
-
-    for enlace in soup.find_all("a", href=True):
-        href = enlace["href"]
-
-        if "/es/noticias/" not in href:
-            continue
-
-        titulo = enlace.get_text(" ", strip=True)
-
-        if not titulo:
-            continue
-
-        url = urljoin(WEB, href)
-
-        noticia = {
-            "titulo": titulo,
-            "url": url
-        }
-
-        if noticia not in noticias:
-            noticias.append(noticia)
-
-    return noticias
-
-
 def extraer_datos_noticia(url):
     soup = obtener_soup(url)
 
+    # --------------------------------------------------
     # TÍTULO
+    # --------------------------------------------------
+
     titulo = None
 
     if soup.find("h1"):
-        titulo = soup.find("h1").get_text(" ", strip=True)
+        titulo = soup.find("h1").get_text(
+            " ",
+            strip=True
+        )
 
     if not titulo and soup.title:
-        titulo = soup.title.get_text(" ", strip=True)
+        titulo = soup.title.get_text(
+            " ",
+            strip=True
+        )
 
+    # --------------------------------------------------
     # DESCRIPCIÓN
+    # --------------------------------------------------
+
     descripcion = None
 
     meta_description = soup.find(
@@ -76,7 +63,10 @@ def extraer_datos_noticia(url):
             ""
         ).strip()
 
+    # --------------------------------------------------
     # IMAGEN
+    # --------------------------------------------------
+
     imagen = None
 
     meta_imagen = soup.find(
@@ -88,7 +78,10 @@ def extraer_datos_noticia(url):
         imagen = meta_imagen.get("content")
 
         if imagen:
-            imagen = urljoin(url, imagen)
+            imagen = urljoin(
+                url,
+                imagen
+            )
 
     return {
         "titulo": titulo,
@@ -99,61 +92,82 @@ def extraer_datos_noticia(url):
 
 
 # --------------------------------------------------
-# BUSCAR LA NOTICIA MÁS RECIENTE
+# LEER NOTICIAS NUEVAS
 # --------------------------------------------------
 
-noticias = obtener_noticias()
+if not ARCHIVO_NUEVAS.exists():
+
+    print("No existe el archivo de noticias nuevas.")
+
+    exit()
+
+
+try:
+
+    noticias = json.loads(
+        ARCHIVO_NUEVAS.read_text(
+            encoding="utf-8"
+        )
+    )
+
+except Exception as error:
+
+    print(
+        f"Error leyendo noticias_nuevas.json: {error}"
+    )
+
+    exit(1)
+
 
 if not noticias:
-    print("No se han encontrado noticias.")
-    exit()
-
-ultima_noticia = noticias[0]
-
-url_guardada = None
-
-if ARCHIVO_MEMORIA.exists():
-    url_guardada = ARCHIVO_MEMORIA.read_text(
-        encoding="utf-8"
-    ).strip()
-
-
-# --------------------------------------------------
-# COMPROBAR SI ES NUEVA
-# --------------------------------------------------
-
-if ultima_noticia["url"] == url_guardada:
 
     print("No hay noticias nuevas.")
+
+    # Evitar que quede un archivo antiguo
+    if ARCHIVO_PUBLICACION.exists():
+        ARCHIVO_PUBLICACION.unlink()
+
     exit()
 
 
 # --------------------------------------------------
-# EXTRAER DATOS
+# GENERAR TODAS LAS PUBLICACIONES
 # --------------------------------------------------
 
-datos = extraer_datos_noticia(
-    ultima_noticia["url"]
-)
+publicaciones = []
+urls_procesadas = []
 
 
-# --------------------------------------------------
-# RESUMEN
-# --------------------------------------------------
+for numero, noticia in enumerate(
+    noticias,
+    start=1
+):
 
-descripcion = datos["descripcion"] or ""
+    print(
+        f"\nProcesando noticia "
+        f"{numero}/{len(noticias)}..."
+    )
 
-# Limitar el resumen para que sea cómodo
-# de leer en WhatsApp.
-if len(descripcion) > 300:
-    descripcion = descripcion[:300].rsplit(" ", 1)[0] + "..."
+    datos = extraer_datos_noticia(
+        noticia["url"]
+    )
 
+    descripcion = datos["descripcion"] or ""
 
-# --------------------------------------------------
-# MENSAJE PARA WHATSAPP
-# --------------------------------------------------
+    # Limitar el resumen
+    if len(descripcion) > 300:
 
-mensaje = f"""🔴🔵 *NUEVA NOTICIA*
+        descripcion = (
+            descripcion[:300]
+            .rsplit(" ", 1)[0]
+            + "..."
+        )
+
+    # --------------------------------------------------
+    # MENSAJE WHATSAPP
+    # --------------------------------------------------
+
+    mensaje = f"""🔴🔵 *NUEVA NOTICIA*
 
 📰 *{datos["titulo"]}*
 
@@ -165,11 +179,13 @@ mensaje = f"""🔴🔵 *NUEVA NOTICIA*
 *CD Estepona Fans | La Voz de la Afición*"""
 
 
-# --------------------------------------------------
-# ARCHIVO ÚNICO PARA PUBLICAR
-# --------------------------------------------------
+    # --------------------------------------------------
+    # GUARDAR PUBLICACIÓN
+    # --------------------------------------------------
 
-contenido = f"""IMAGEN:
+    publicacion = f"""🆕 PUBLICACIÓN {numero}/{len(noticias)}
+
+IMAGEN:
 {datos["imagen"]}
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -177,18 +193,62 @@ contenido = f"""IMAGEN:
 MENSAJE:
 
 {mensaje}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
+    publicaciones.append(publicacion)
 
-Path("PUBLICAR_EN_WHATSAPP.txt").write_text(
-    contenido,
+    urls_procesadas.append(
+        noticia["url"]
+    )
+
+
+# --------------------------------------------------
+# CREAR ARCHIVO FINAL
+# --------------------------------------------------
+
+contenido_final = "\n".join(
+    publicaciones
+)
+
+ARCHIVO_PUBLICACION.write_text(
+    contenido_final,
     encoding="utf-8"
 )
+
+
+# --------------------------------------------------
+# ACTUALIZAR MEMORIA
+# --------------------------------------------------
+
+with ARCHIVO_MEMORIA.open(
+    "a",
+    encoding="utf-8"
+) as archivo:
+
+    for url in urls_procesadas:
+
+        archivo.write(
+            url + "\n"
+        )
 
 
 # --------------------------------------------------
 # MOSTRAR RESULTADO
 # --------------------------------------------------
 
-print("--- PUBLICACIÓN GENERADA ---")
-print(contenido)
+print("\n======================================")
+print("PUBLICACIONES GENERADAS")
+print("======================================")
+
+print(
+    f"\nSe han preparado "
+    f"{len(publicaciones)} publicación(es)."
+)
+
+print(
+    f"\nArchivo generado: "
+    f"{ARCHIVO_PUBLICACION}"
+)
+```
