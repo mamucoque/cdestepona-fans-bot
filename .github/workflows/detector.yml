@@ -1,10 +1,10 @@
 ```yaml
 name: Detector de noticias
 
-on:
+'on':
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Instalar dependencias
         run: pip install requests beautifulsoup4
@@ -52,5 +52,9 @@ jobs:
           git config user.name "CD Estepona Fans Bot"
           git config user.email "bot@cdesteponafans.com"
           git add noticias_procesadas.txt
-          git diff --cached --quiet || git commit -m "Actualizar noticias procesadas"
-          git push
+          if git diff --cached --quiet; then
+            echo "No hay cambios en la memoria."
+          else
+            git commit -m "Actualizar noticias procesadas"
+            git push
+          fi
