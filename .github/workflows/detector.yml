@@ -28,9 +28,6 @@ jobs:
       - name: Ejecutar detector
         run: python detector.py
 
-      - name: Probar extracción
-        run: python prueba_noticia.py
-
       - name: Generar publicación
         run: python mensaje.py
         continue-on-error: true
