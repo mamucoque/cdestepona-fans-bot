@@ -119,7 +119,7 @@ if ARCHIVO_MEMORIA.exists():
 
 
 # --------------------------------------------------
-# SI NO HAY NOTICIA NUEVA, TERMINAMOS
+# COMPROBAR SI ES NUEVA
 # --------------------------------------------------
 
 if ultima_noticia["url"] == url_guardada:
@@ -129,7 +129,7 @@ if ultima_noticia["url"] == url_guardada:
 
 
 # --------------------------------------------------
-# EXTRAER INFORMACIÓN DE LA NUEVA NOTICIA
+# EXTRAER DATOS
 # --------------------------------------------------
 
 datos = extraer_datos_noticia(
@@ -138,47 +138,57 @@ datos = extraer_datos_noticia(
 
 
 # --------------------------------------------------
-# GENERAR MENSAJE
+# RESUMEN
 # --------------------------------------------------
 
-mensaje = f"""🔴🔵 NUEVA NOTICIA
+descripcion = datos["descripcion"] or ""
 
-📰 {datos["titulo"]}
+# Limitar el resumen para que sea cómodo
+# de leer en WhatsApp.
+if len(descripcion) > 300:
+    descripcion = descripcion[:300].rsplit(" ", 1)[0] + "..."
 
-{datos["descripcion"]}
+
+# --------------------------------------------------
+# MENSAJE PARA WHATSAPP
+# --------------------------------------------------
+
+mensaje = f"""🔴🔵 *NUEVA NOTICIA*
+
+📰 *{datos["titulo"]}*
+
+{descripcion}
 
 🔗 Leer la noticia completa:
 {datos["url"]}
 
-CD Estepona Fans | La Voz de la Afición
+*CD Estepona Fans | La Voz de la Afición*"""
+
+
+# --------------------------------------------------
+# ARCHIVO ÚNICO PARA PUBLICAR
+# --------------------------------------------------
+
+contenido = f"""IMAGEN:
+{datos["imagen"]}
+
+━━━━━━━━━━━━━━━━━━━━
+
+MENSAJE:
+
+{mensaje}
 """
+
+
+Path("PUBLICAR_EN_WHATSAPP.txt").write_text(
+    contenido,
+    encoding="utf-8"
+)
 
 
 # --------------------------------------------------
 # MOSTRAR RESULTADO
 # --------------------------------------------------
 
-print("--- MENSAJE GENERADO ---")
-print(mensaje)
-
-print("--- IMAGEN ---")
-print(datos["imagen"])
-
-
-# --------------------------------------------------
-# GUARDAR ARCHIVO LISTO PARA COPIAR
-# --------------------------------------------------
-
-Path("mensaje_whatsapp.txt").write_text(
-    mensaje,
-    encoding="utf-8"
-)
-
-Path("imagen_noticia.txt").write_text(
-    datos["imagen"] or "",
-    encoding="utf-8"
-)
-
-print("--- ARCHIVOS GENERADOS ---")
-print("mensaje_whatsapp.txt")
-print("imagen_noticia.txt")
+print("--- PUBLICACIÓN GENERADA ---")
+print(contenido)
