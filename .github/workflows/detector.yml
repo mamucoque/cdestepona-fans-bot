@@ -1,3 +1,4 @@
+```yaml
 name: Detector de noticias
 
 on:
@@ -25,14 +26,13 @@ jobs:
         run: |
           pip install requests beautifulsoup4
 
-      - name: Ejecutar detector
+      - name: Detectar noticias nuevas
         run: python detector.py
 
-      - name: Generar publicación
+      - name: Generar publicaciones
         run: python mensaje.py
-        continue-on-error: true
 
-      - name: Comprobar publicación generada
+      - name: Comprobar publicaciones
         id: publicacion
         run: |
           if [ -f "PUBLICAR_EN_WHATSAPP.txt" ]; then
@@ -53,11 +53,12 @@ jobs:
           git config user.name "CD Estepona Fans Bot"
           git config user.email "bot@cdesteponafans.com"
 
-          git add ultima_noticia.txt
+          git add noticias_procesadas.txt
 
           if git diff --cached --quiet; then
             echo "No hay cambios en la memoria."
           else
-            git commit -m "Actualizar memoria del detector"
+            git commit -m "Actualizar noticias procesadas"
             git push
           fi
+```
