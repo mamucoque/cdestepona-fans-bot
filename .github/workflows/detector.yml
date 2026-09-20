@@ -28,6 +28,9 @@ jobs:
       - name: Ejecutar detector
         run: python detector.py
 
+      - name: Probar extracción
+        run: python prueba_noticia.py
+
       - name: Guardar memoria
         run: |
           git config user.name "CD Estepona Fans Bot"
