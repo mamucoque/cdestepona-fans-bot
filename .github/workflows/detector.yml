@@ -33,15 +33,25 @@ jobs:
 
       - name: Generar mensaje
         run: python mensaje.py
+        continue-on-error: true
+
+      - name: Comprobar archivos generados
+        id: archivos
+        run: |
+          if [ -f "mensaje_whatsapp.txt" ] && [ -f "imagen_noticia.txt" ]; then
+            echo "hay_archivos=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_archivos=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Guardar archivos generados
+        if: steps.archivos.outputs.hay_archivos == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: mensaje-whatsapp
           path: |
             mensaje_whatsapp.txt
             imagen_noticia.txt
-          if-no-files-found: ignore
 
       - name: Guardar memoria
         run: |
