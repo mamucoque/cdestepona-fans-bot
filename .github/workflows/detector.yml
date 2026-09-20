@@ -31,27 +31,25 @@ jobs:
       - name: Probar extracción
         run: python prueba_noticia.py
 
-      - name: Generar mensaje
+      - name: Generar publicación
         run: python mensaje.py
         continue-on-error: true
 
-      - name: Comprobar archivos generados
-        id: archivos
+      - name: Comprobar publicación generada
+        id: publicacion
         run: |
-          if [ -f "mensaje_whatsapp.txt" ] && [ -f "imagen_noticia.txt" ]; then
-            echo "hay_archivos=true" >> "$GITHUB_OUTPUT"
+          if [ -f "PUBLICAR_EN_WHATSAPP.txt" ]; then
+            echo "hay_publicacion=true" >> "$GITHUB_OUTPUT"
           else
-            echo "hay_archivos=false" >> "$GITHUB_OUTPUT"
+            echo "hay_publicacion=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Guardar archivos generados
-        if: steps.archivos.outputs.hay_archivos == 'true'
+      - name: Guardar publicación
+        if: steps.publicacion.outputs.hay_publicacion == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: mensaje-whatsapp
-          path: |
-            mensaje_whatsapp.txt
-            imagen_noticia.txt
+          name: PUBLICAR-EN-WHATSAPP
+          path: PUBLICAR_EN_WHATSAPP.txt
 
       - name: Guardar memoria
         run: |
