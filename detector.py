@@ -1,10 +1,13 @@
+```python
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from pathlib import Path
+import json
 
 WEB = "https://www.cdesteponafans.com/"
-ARCHIVO_MEMORIA = Path("ultima_noticia.txt")
+ARCHIVO_MEMORIA = Path("noticias_procesadas.txt")
+ARCHIVO_NUEVAS = Path("noticias_nuevas.json")
 
 
 def obtener_soup(url):
@@ -50,122 +53,134 @@ def obtener_noticias():
     return noticias
 
 
-def leer_ultima_noticia():
+def leer_memoria():
     if not ARCHIVO_MEMORIA.exists():
-        return None
+        return set()
 
-    return ARCHIVO_MEMORIA.read_text(
+    urls = set()
+
+    for linea in ARCHIVO_MEMORIA.read_text(
         encoding="utf-8"
-    ).strip()
+    ).splitlines():
+
+        linea = linea.strip()
+
+        if linea:
+            urls.add(linea)
+
+    return urls
 
 
-def guardar_ultima_noticia(url):
-    ARCHIVO_MEMORIA.write_text(
-        url,
+def guardar_nuevas(noticias):
+    ARCHIVO_NUEVAS.write_text(
+        json.dumps(
+            noticias,
+            ensure_ascii=False,
+            indent=2
+        ),
         encoding="utf-8"
     )
-
-
-def extraer_datos_noticia(url):
-    soup = obtener_soup(url)
-
-    # Título
-    titulo = None
-
-    if soup.find("h1"):
-        titulo = soup.find("h1").get_text(" ", strip=True)
-
-    if not titulo and soup.title:
-        titulo = soup.title.get_text(" ", strip=True)
-
-    # Descripción
-    descripcion = None
-
-    meta_description = soup.find(
-        "meta",
-        attrs={"name": "description"}
-    )
-
-    if meta_description:
-        descripcion = meta_description.get("content", "").strip()
-
-    # Imagen principal
-    imagen = None
-
-    meta_imagen = soup.find(
-        "meta",
-        attrs={"property": "og:image"}
-    )
-
-    if meta_imagen:
-        imagen = meta_imagen.get("content")
-
-        if imagen:
-            imagen = urljoin(url, imagen)
-
-    return {
-        "titulo": titulo,
-        "descripcion": descripcion,
-        "imagen": imagen,
-        "url": url
-    }
 
 
 # --------------------------------------------------
-# PROGRAMA PRINCIPAL
+# BUSCAR NOTICIAS
 # --------------------------------------------------
 
 noticias = obtener_noticias()
 
 if not noticias:
     print("No se han encontrado noticias.")
+    guardar_nuevas([])
     exit()
 
-ultima_noticia = noticias[0]
-url_guardada = leer_ultima_noticia()
 
-print("Última noticia encontrada:")
-print(ultima_noticia["titulo"])
-print(ultima_noticia["url"])
+print(f"Noticias encontradas: {len(noticias)}")
 
 
-if url_guardada is None:
+# --------------------------------------------------
+# LEER MEMORIA
+# --------------------------------------------------
+
+memoria_existe = ARCHIVO_MEMORIA.exists()
+procesadas = leer_memoria()
+
+
+# --------------------------------------------------
+# PRIMERA EJECUCIÓN
+# --------------------------------------------------
+
+if not memoria_existe:
 
     print("\nPrimera ejecución.")
-    print("Guardando la noticia actual como referencia.")
 
-    guardar_ultima_noticia(
-        ultima_noticia["url"]
+    print(
+        "Se guardarán las noticias actuales como "
+        "ya procesadas para evitar publicaciones antiguas."
     )
 
+    ARCHIVO_MEMORIA.write_text(
+        "\n".join(
+            noticia["url"]
+            for noticia in noticias
+        ),
+        encoding="utf-8"
+    )
 
-elif ultima_noticia["url"] == url_guardada:
+    guardar_nuevas([])
+
+    print(
+        f"Se han guardado {len(noticias)} noticias "
+        "como referencia inicial."
+    )
+
+    exit()
+
+
+# --------------------------------------------------
+# DETECTAR TODAS LAS NOTICIAS NUEVAS
+# --------------------------------------------------
+
+nuevas = [
+    noticia
+    for noticia in noticias
+    if noticia["url"] not in procesadas
+]
+
+
+# --------------------------------------------------
+# ORDENAR DE LA MÁS ANTIGUA A LA MÁS NUEVA
+# --------------------------------------------------
+
+nuevas.reverse()
+
+
+if not nuevas:
 
     print("\nNo hay noticias nuevas.")
 
+    guardar_nuevas([])
 
-else:
+    exit()
 
-    print("\n🆕 ¡HAY UNA NOTICIA NUEVA!")
 
-    datos = extraer_datos_noticia(
-        ultima_noticia["url"]
-    )
+# --------------------------------------------------
+# GUARDAR PENDIENTES
+# --------------------------------------------------
 
-    print("\n--- DATOS DE LA NOTICIA ---")
+guardar_nuevas(nuevas)
 
-    print("\nTítulo:")
-    print(datos["titulo"])
 
-    print("\nDescripción:")
-    print(datos["descripcion"])
+# --------------------------------------------------
+# MOSTRAR RESULTADO
+# --------------------------------------------------
 
-    print("\nImagen:")
-    print(datos["imagen"])
+print(
+    f"\n🆕 Se han detectado {len(nuevas)} "
+    "noticia(s) nueva(s):"
+)
 
-    print("\nURL:")
-    print(datos["url"])
+for numero, noticia in enumerate(nuevas, start=1):
 
-    guardar_ultima_noticia(
-        ultima_noticia["url"]
-    )
+    print(f"\n{numero}. {noticia['titulo']}")
+    print(noticia["url"])
+```
